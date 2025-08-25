@@ -25,16 +25,15 @@ def main():
     wait = WebDriverWait(driver, 30)
 
     try:
-        # 🔗 URL changed
+        # 🔗 URL
         url = "https://taps.odoo.com/web#action=menu&cids=3"
         driver.get(url)
         logging.info(f"🌐 Opened {url}")
 
-        # login (if needed)
+        # --- login if needed ---
         # wait.until(EC.presence_of_element_located((By.XPATH, "//*[@id='login']")))
 
         # --- do your export steps here ---
-        # Example: open dropdown, click Export
         wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[1]/div/div[1]/div/div[2]/div/div[2]/div/div"))).click()
         logging.info("📥 Clicked dropdown for Export")
 
@@ -43,22 +42,30 @@ def main():
 
         # --- file handling ---
         time.sleep(10)  # wait for file to download
-        download_dir = str(Path.home() / "Downloads")
+        download_dir = Path.home() / "Downloads"
 
-        # find latest file
-        files = list(Path(download_dir).glob("*.xlsx"))
-        if not files:
-            logging.warning("⚠️ No Excel file found")
+        # specify exact filename of downloaded file (change if needed)
+        downloaded_file_name = "Metal Stock (pending.stock.config)"
+        downloaded_file_path = download_dir / downloaded_file_name
+
+        if not downloaded_file_path.exists():
+            logging.warning(f"⚠️ File not found: {downloaded_file_path}")
             return
 
-        latest_file = max(files, key=os.path.getctime)
-        logging.info(f"📂 Latest file downloaded: {latest_file}")
+        logging.info(f"📂 Found downloaded file: {downloaded_file_path}")
 
-        # rename & save to Metal Raw.xlsx
-        df = pd.read_excel(latest_file)
-        out_file = Path(download_dir) / "Metal Raw.xlsx"
+        # read Excel (even if extension is .config)
+        df = pd.read_excel(downloaded_file_path)
+        out_file = download_dir / "Metal Raw.xlsx"
         df.to_excel(out_file, index=False)
         logging.info(f"✅ File saved as: {out_file}")
+
+        # delete the original file
+        try:
+            os.remove(downloaded_file_path)
+            logging.info(f"🗑️ Original file deleted: {downloaded_file_path}")
+        except Exception as e:
+            logging.warning(f"⚠️ Could not delete file: {e}")
 
     finally:
         driver.quit()

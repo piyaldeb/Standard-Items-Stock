@@ -1,6 +1,5 @@
 import time
 import os
-import glob
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -18,7 +17,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 ODOO_URL = "https://taps.odoo.com/web#action=menu&cids=1&menu_id=957"
 EMAIL = "ranak@texzipperbd.com"
 PASSWORD = "2326"
-DOWNLOAD_PATH = os.path.join(os.path.expanduser("~"), "Downloads")  # default
+DOWNLOAD_PATH = os.path.join(os.path.expanduser("~"), "Downloads")
+FILENAME = "Standard Items Stock (pending.stock.config)"  # exact downloaded file
 
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1fnOSIWQa_mbfMHdgPatjYEIhG3kQlzPy0djHG8TOszk/edit?gid=1326846174"
 SHEET_NAME = "Zipper Raw"
@@ -27,7 +27,7 @@ SHEET_NAME = "Zipper Raw"
 # SELENIUM (HEADLESS)
 # -------------------------
 options = webdriver.ChromeOptions()
-options.add_argument("--headless=new")   # ✅ headless mode
+options.add_argument("--headless=new")
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
@@ -39,14 +39,18 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 driver.get(ODOO_URL)
 wait = WebDriverWait(driver, 30)
 
-# login
+# -------------------------
+# LOGIN
+# -------------------------
 time.sleep(5)
 driver.find_element(By.NAME, "login").send_keys(EMAIL)
 driver.find_element(By.NAME, "password").send_keys(PASSWORD)
 driver.find_element(By.XPATH, "//button").click()
 time.sleep(10)
 
-# search "Standard items Stock"
+# -------------------------
+# SEARCH "Standard items Stock"
+# -------------------------
 search_box = wait.until(EC.presence_of_element_located((By.TAG_NAME, "input")))
 search_box.send_keys("Standard items Stock")
 search_box.send_keys(Keys.ENTER)
@@ -77,12 +81,16 @@ time.sleep(15)
 # -------------------------
 # LOAD DOWNLOADED FILE
 # -------------------------
-list_of_files = glob.glob(os.path.join(DOWNLOAD_PATH, "*.csv"))
-latest_file = max(list_of_files, key=os.path.getctime)
-df = pd.read_csv(latest_file)
+file_path = os.path.join(DOWNLOAD_PATH, FILENAME)
 
-# keep A:J only
-df = df.iloc[:, :10]
+if not os.path.exists(file_path):
+    print(f"❌ File not found: {file_path}")
+    driver.quit()
+    exit()
+
+print(f"✅ File found: {file_path}")
+df = pd.read_csv(file_path)  # assuming CSV format
+df = df.iloc[:, :10]  # keep A:J only
 
 # -------------------------
 # UPLOAD TO GOOGLE SHEETS
@@ -98,5 +106,14 @@ worksheet.clear()
 worksheet.update([df.columns.values.tolist()] + df.values.tolist())
 
 print("✅ Data uploaded successfully to Google Sheet.")
+
+# -------------------------
+# DELETE FILE AFTER UPLOAD
+# -------------------------
+try:
+    os.remove(file_path)
+    print(f"🗑️ File deleted: {file_path}")
+except Exception as e:
+    print(f"⚠️ Could not delete file: {e}")
 
 driver.quit()
