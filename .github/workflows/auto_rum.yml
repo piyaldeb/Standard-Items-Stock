@@ -1,0 +1,33 @@
+name: Odoo Export Automation
+
+on:
+  schedule:
+    # Every 30 minutes between 12:30 PM - 2:00 PM Dhaka (UTC+6)
+    - cron: "30 6 * * *"   # 12:30 PM Dhaka → 06:30 UTC
+    - cron: "0 7 * * *"    # 1:00 PM Dhaka → 07:00 UTC
+    - cron: "30 7 * * *"   # 1:30 PM Dhaka → 07:30 UTC
+    - cron: "0 8 * * *"    # 2:00 PM Dhaka → 08:00 UTC
+
+    # Run once at 12:00 AM Dhaka
+    - cron: "0 18 * * *"   # 12:00 AM Dhaka → 18:00 UTC (previous day)
+
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  run-export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install selenium webdriver-manager pandas gspread oauth2client
+
+      - name: Run export script
+        run: python odoo_export.py
