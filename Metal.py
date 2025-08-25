@@ -11,6 +11,8 @@ import os
 import time
 from pathlib import Path
 import pandas as pd
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,6 +29,11 @@ os.makedirs(DOWNLOAD_PATH, exist_ok=True)
 
 FILE_PATTERN = "Standard Items Stock*"  # pattern to match downloaded file
 OUTPUT_FILE_NAME = "Metal Raw.xlsx"
+
+# Google Sheet config
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1fnOSIWQa_mbfMHdgPatjYEIhG3kQlzPy0djHG8TOszk/edit#gid=463655666"
+SHEET_NAME = "Metal Raw"
+CREDENTIALS_FILE = "credentials.json"  # your service account JSON
 
 def main():
     logging.info("✅ Starting Metal.py...")
@@ -112,9 +119,35 @@ def main():
         else:
             raise ValueError(f"Unsupported file type: {latest_file.suffix}")
 
+        # Keep only columns A:J
+        df = df.iloc[:, :10]
+
+        # Save locally
         out_file = os.path.join(DOWNLOAD_PATH, OUTPUT_FILE_NAME)
         df.to_excel(out_file, index=False)
         logging.info(f"✅ File saved as: {out_file}")
+
+        # -------------------------
+        # UPLOAD TO GOOGLE SHEETS (A:J)
+        # -------------------------
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
+        client = gspread.authorize(creds)
+
+        spreadsheet = client.open_by_url(GOOGLE_SHEET_URL)
+        worksheet = spreadsheet.worksheet(SHEET_NAME)
+
+        # Read existing data to preserve other columns
+        existing_data = worksheet.get_all_values()
+        max_rows = max(len(existing_data), len(df))  # ensure enough rows
+        max_cols = len(existing_data[0]) if existing_data else 10
+
+        # Update only A:J
+        for i in range(len(df)):
+            for j in range(len(df.columns)):
+                worksheet.update_cell(i + 1, j + 1, str(df.iloc[i, j]))
+
+        logging.info("✅ Data uploaded successfully to Google Sheet (columns A:J)")
 
         # delete original downloaded file
         try:
