@@ -29,9 +29,12 @@ jobs:
         run: |
           pip install selenium webdriver-manager pandas gspread oauth2client
 
+      - name: Set up Google credentials
+        run: |
+          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > credentials.json
+
       - name: Run Zipper script
         run: python Zipper.py
 
       - name: Run Metal script
         run: python Metal.py
-
