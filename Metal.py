@@ -128,7 +128,7 @@ def main():
         logging.info(f"✅ File saved as: {out_file}")
 
         # -------------------------
-        # UPLOAD TO GOOGLE SHEETS (A:J)
+# UPLOAD TO GOOGLE SHEETS (A:J) BATCH
         # -------------------------
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
@@ -137,17 +137,15 @@ def main():
         spreadsheet = client.open_by_url(GOOGLE_SHEET_URL)
         worksheet = spreadsheet.worksheet(SHEET_NAME)
 
-        # Read existing data to preserve other columns
-        existing_data = worksheet.get_all_values()
-        max_rows = max(len(existing_data), len(df))  # ensure enough rows
-        max_cols = len(existing_data[0]) if existing_data else 10
+        # Prepare data to update: include header
+        data_to_update = [df.columns.tolist()] + df.values.tolist()
 
-        # Update only A:J
-        for i in range(len(df)):
-            for j in range(len(df.columns)):
-                worksheet.update_cell(i + 1, j + 1, str(df.iloc[i, j]))
+        # Batch update A:J
+        cell_range = f"A1:J{len(data_to_update)}"
+        worksheet.update(cell_range, data_to_update)
 
         logging.info("✅ Data uploaded successfully to Google Sheet (columns A:J)")
+
 
         # delete original downloaded file
         try:
