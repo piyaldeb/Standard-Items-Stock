@@ -112,7 +112,7 @@ else:
 df = df.iloc[:, :10]  # keep A:J only
 
 # -------------------------
-# UPLOAD TO GOOGLE SHEETS
+# UPLOAD TO GOOGLE SHEETS (A:J ONLY)
 # -------------------------
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
@@ -121,8 +121,14 @@ client = gspread.authorize(creds)
 spreadsheet = client.open_by_url(GOOGLE_SHEET_URL)
 worksheet = spreadsheet.worksheet(SHEET_NAME)
 
-worksheet.clear()
-worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+# Clear only A:J
+worksheet.batch_clear(["A:J"])
+
+# Prepare values (columns A:J)
+values = [df.columns.values.tolist()] + df.values.tolist()
+
+# Update starting at A1
+worksheet.update(f"A1:J{len(values)}", values)
 
 print("✅ Data uploaded successfully to Google Sheet.")
 
