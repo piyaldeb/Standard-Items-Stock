@@ -29,5 +29,9 @@ jobs:
         run: |
           pip install selenium webdriver-manager pandas gspread oauth2client
 
-      - name: Run export script
-        run: python odoo_export.py
+      - name: Run Zipper script
+        run: python Zipper.py
+
+      - name: Run Metal script
+        run: python Metal.py
+
