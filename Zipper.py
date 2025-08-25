@@ -1,5 +1,6 @@
 import time
 import os
+from pathlib import Path
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -17,8 +18,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 ODOO_URL = "https://taps.odoo.com/web#action=menu&cids=1&menu_id=957"
 EMAIL = "ranak@texzipperbd.com"
 PASSWORD = "2326"
-DOWNLOAD_PATH = os.path.join(os.path.expanduser("~"), "Downloads")
-FILENAME = "Standard Items Stock (pending.stock.config)"  # exact downloaded file
+
+# Use project download folder
+DOWNLOAD_PATH = os.path.join(os.getcwd(), "download")
+os.makedirs(DOWNLOAD_PATH, exist_ok=True)
+
+FILE_PATTERN = "Standard Items Stock*"  # match partial name in case it changes slightly
 
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1fnOSIWQa_mbfMHdgPatjYEIhG3kQlzPy0djHG8TOszk/edit?gid=1326846174"
 SHEET_NAME = "Zipper Raw"
@@ -31,7 +36,6 @@ options.add_argument("--headless=new")
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
-
 prefs = {"download.default_directory": DOWNLOAD_PATH}
 options.add_experimental_option("prefs", prefs)
 
@@ -70,26 +74,35 @@ action_btn.click()
 time.sleep(5)
 
 # click "Export"
-export_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Export')]")))
-export_btn.click()
-time.sleep(10)
+export_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Export')]"))).click()
+time.sleep(5)
 
 # confirm Export in popup
 wait.until(EC.element_to_be_clickable((By.XPATH, "//footer//button[contains(., 'Export')]"))).click()
-time.sleep(15)
 
 # -------------------------
-# LOAD DOWNLOADED FILE
+# WAIT FOR DOWNLOAD AND LOAD FILE
 # -------------------------
-file_path = os.path.join(DOWNLOAD_PATH, FILENAME)
+timeout = 60  # wait max 60 seconds
+start = time.time()
+latest_file = None
 
-if not os.path.exists(file_path):
-    print(f"❌ File not found: {file_path}")
+while time.time() - start < timeout:
+    files = list(Path(DOWNLOAD_PATH).glob(FILE_PATTERN))
+    if files:
+        latest_file = max(files, key=os.path.getctime)
+        break
+    time.sleep(1)
+
+if not latest_file:
+    print(f"❌ File not found in {DOWNLOAD_PATH} after waiting!")
     driver.quit()
     exit()
 
-print(f"✅ File found: {file_path}")
-df = pd.read_csv(file_path)  # assuming CSV format
+print(f"✅ Latest file found: {latest_file}")
+
+# read CSV (adjust if Excel)
+df = pd.read_csv(latest_file)
 df = df.iloc[:, :10]  # keep A:J only
 
 # -------------------------
@@ -111,8 +124,8 @@ print("✅ Data uploaded successfully to Google Sheet.")
 # DELETE FILE AFTER UPLOAD
 # -------------------------
 try:
-    os.remove(file_path)
-    print(f"🗑️ File deleted: {file_path}")
+    os.remove(latest_file)
+    print(f"🗑️ File deleted: {latest_file}")
 except Exception as e:
     print(f"⚠️ Could not delete file: {e}")
 
