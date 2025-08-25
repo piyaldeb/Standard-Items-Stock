@@ -101,8 +101,14 @@ if not latest_file:
 
 print(f"✅ Latest file found: {latest_file}")
 
-# read CSV (adjust if Excel)
-df = pd.read_csv(latest_file)
+# --- detect file type automatically ---
+if latest_file.suffix.lower() in [".xlsx", ".xls"]:
+    df = pd.read_excel(latest_file)
+elif latest_file.suffix.lower() == ".csv":
+    df = pd.read_csv(latest_file)
+else:
+    raise ValueError(f"Unsupported file type: {latest_file.suffix}")
+
 df = df.iloc[:, :10]  # keep A:J only
 
 # -------------------------
