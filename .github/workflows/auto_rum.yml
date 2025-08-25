@@ -31,7 +31,7 @@ jobs:
 
       - name: Set up Google credentials
         run: |
-          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > credentials.json
+          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > | base64 --decode > credentials.json
 
       - name: Run Zipper script
         run: python Zipper.py
