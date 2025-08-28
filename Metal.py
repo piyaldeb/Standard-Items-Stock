@@ -4,7 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import os
@@ -35,6 +35,34 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1fnOSIWQa_mbfMHdgPatj
 SHEET_NAME = "Metal Raw"
 CREDENTIALS_FILE = "credentials.json"  # your service account JSON
 
+
+def wait_for_download(download_dir: str, pattern: str, timeout: int = 180) -> Path:
+    """
+    Wait for a file matching 'pattern' to appear in 'download_dir' and for any .crdownload to finish.
+    Returns the Path to the newest matching file.
+    """
+    start = time.time()
+    latest_file = None
+    logging.info(f"⏳ Waiting for download into {download_dir} (pattern: '{pattern}')")
+
+    while time.time() - start < timeout:
+        matches = list(Path(download_dir).glob(pattern))
+        if matches:
+            # newest match by mtime
+            candidate = max(matches, key=os.path.getmtime)
+            crdownload = candidate.with_name(candidate.name + ".crdownload")
+            if not crdownload.exists():
+                latest_file = candidate
+                break
+        time.sleep(1)
+
+    if not latest_file:
+        raise TimeoutError(f"Download did not complete in {timeout}s (pattern='{pattern}')")
+
+    logging.info(f"✅ Download complete: {latest_file}")
+    return latest_file
+
+
 def main():
     logging.info("✅ Starting Metal.py...")
 
@@ -42,7 +70,9 @@ def main():
     options.add_argument("--headless=new")  # uncomment to run headless
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    prefs = {"download.default_directory": DOWNLOAD_PATH}
+    prefs = {"download.default_directory": DOWNLOAD_PATH,
+             "download.prompt_for_download": False,
+             "safebrowsing.enabled": True}
     options.add_experimental_option("prefs", prefs)
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -85,33 +115,42 @@ def main():
 
         # click "Export"
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Export')]"))).click()
-        time.sleep(5)
+        time.sleep(2)
 
-        # confirm Export in popup
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//footer//button[contains(., 'Export')]"))).click()
+        # =========================
+        # (1) SELECT "00-Ranak" IN EXPORT MODAL
+        # =========================
+        # Use the absolute XPath you shared earlier (adjust if Odoo updates the DOM)
+        select_xpath = "/html/body/div[2]/div[2]/div/div/div/div/main/div/div[2]/div[3]/div/select"
+        dropdown_el = wait.until(EC.presence_of_element_located((By.XPATH, select_xpath)))
 
-        # -------------------------
-        # WAIT FOR DOWNLOAD AND LOAD FILE
-        # -------------------------
-        timeout = 60  # wait max 60 seconds
-        start = time.time()
-        latest_file = None
+        sel = Select(dropdown_el)
+        try:
+            sel.select_by_visible_text("00-Ranak")
+            logging.info('📌 Selected template: "00-Ranak"')
+        except Exception as e:
+            # Fallback to first option if not present
+            if not sel.options:
+                raise RuntimeError("No options found in export dropdown!") from e
+            sel.select_by_index(0)
+            logging.info(f'📌 "00-Ranak" not found; selected first option: "{sel.options[0].text.strip()}"')
 
-        while time.time() - start < timeout:
-            files = list(Path(DOWNLOAD_PATH).glob(FILE_PATTERN))
-            if files:
-                latest_file = max(files, key=os.path.getctime)
-                break
-            time.sleep(1)
+        time.sleep(1)
 
-        if not latest_file:
-            print(f"❌ File not found in {DOWNLOAD_PATH} after waiting!")
-            driver.quit()
-            exit()
+        # =========================
+        # (2) CONFIRM EXPORT
+        # =========================
+        export_btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//footer//button[contains(., 'Export')]")))
+        export_btn.click()
+        logging.info("📤 Export confirmed, waiting for file to download...")
+        time.sleep(2)
 
-        print(f"✅ Latest file found: {latest_file}")
+        # =========================
+        # (3) WAIT FOR DOWNLOAD
+        # =========================
+        latest_file = wait_for_download(DOWNLOAD_PATH, FILE_PATTERN, timeout=180)
 
-        # --- read Excel ---
+        # --- read Excel/CSV ---
         if latest_file.suffix.lower() in [".xlsx", ".xls"]:
             df = pd.read_excel(latest_file)
         elif latest_file.suffix.lower() == ".csv":
@@ -122,13 +161,13 @@ def main():
         # Keep only columns A:J
         df = df.iloc[:, :10]
 
-        # Save locally
+        # Save locally (as requested)
         out_file = os.path.join(DOWNLOAD_PATH, OUTPUT_FILE_NAME)
         df.to_excel(out_file, index=False)
         logging.info(f"✅ File saved as: {out_file}")
 
         # -------------------------
-# UPLOAD TO GOOGLE SHEETS (A:J) BATCH
+        # UPLOAD TO GOOGLE SHEETS (A:J) BATCH
         # -------------------------
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, scope)
@@ -146,7 +185,6 @@ def main():
 
         logging.info("✅ Data uploaded successfully to Google Sheet (columns A:J)")
 
-
         # delete original downloaded file
         try:
             os.remove(latest_file)
@@ -156,6 +194,7 @@ def main():
 
     finally:
         driver.quit()
+
 
 if __name__ == "__main__":
     main()
