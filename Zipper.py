@@ -161,7 +161,7 @@ for d in CANDIDATE_DIRS:
     log(f"  - {d}")
 
 options = webdriver.ChromeOptions()
-# options.add_argument("--headless=new")  # enable if needed
+options.add_argument("--headless=new")  # enable if needed
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
