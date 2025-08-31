@@ -35,7 +35,7 @@ jobs:
           echo "${{ secrets.GOOGLE_CREDENTIALS }}" | base64 --decode > credentials.json
 
       - name: Run Zipper script
-        run: python Zipper_db.py
+        run: python zipper_db.py
 
       - name: Run Metal script
         run: python Metal_db.py
