@@ -21,10 +21,18 @@ from oauth2client.service_account import ServiceAccountCredentials
 # -------------------------
 # CONFIG
 # -------------------------
-ODOO_URL = "https://taps.odoo.com/web#action=menu&cids=1&menu_id=957"
-EMAIL = "ranak@texzipperbd.com"
-PASSWORD = "2326"
+from dotenv import load_dotenv   # <-- NEW
 
+# Load variables from .env
+load_dotenv()
+
+# =========================
+# CONFIG — now pulled from environment
+# =========================
+ODOO_URL   = os.getenv("ODOO_URL")
+DB         = os.getenv("ODOO_DB")
+USERNAME   = os.getenv("ODOO_USERNAME")
+PASSWORD   = os.getenv("ODOO_PASSWORD")
 EXPECTED_NAME_HINT = "Standard Items Stock"  # only for logging
 
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1fnOSIWQa_mbfMHdgPatjYEIhG3kQlzPy0djHG8TOszk/edit?gid=1326846174"

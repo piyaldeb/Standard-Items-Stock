@@ -28,11 +28,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install selenium webdriver-manager pandas gspread oauth2client openpyxl
+          pip install selenium webdriver-manager pandas gspread oauth2client openpyxl python-dotenv
 
       - name: Set up Google credentials
         run: |
           echo "${{ secrets.GOOGLE_CREDENTIALS }}" | base64 --decode > credentials.json
+
+      - name: Create .env file
+        run: |
+          echo "ODOO_URL=${{ secrets.ODOO_URL }}" >> .env
+          echo "ODOO_DB=${{ secrets.ODOO_DB }}" >> .env
+          echo "ODOO_USERNAME=${{ secrets.ODOO_USERNAME }}" >> .env
+          echo "ODOO_PASSWORD=${{ secrets.ODOO_PASSWORD }}" >> .env
 
       - name: Run Zipper script
         run: python zipper_db.py

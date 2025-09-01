@@ -19,9 +19,18 @@ logging.basicConfig(level=logging.INFO)
 # -------------------------
 # CONFIG
 # -------------------------
-ODOO_URL = "https://taps.odoo.com/web#action=menu&cids=3"
-EMAIL = "ranak@texzipperbd.com"
-PASSWORD = "2326"
+from dotenv import load_dotenv   # <-- NEW
+
+# Load variables from .env
+load_dotenv()
+
+# =========================
+# CONFIG — now pulled from environment
+# =========================
+ODOO_URL   = os.getenv("ODOO_URL")
+DB         = os.getenv("ODOO_DB")
+USERNAME   = os.getenv("ODOO_USERNAME")
+PASSWORD   = os.getenv("ODOO_PASSWORD")
 
 # Use project download folder
 DOWNLOAD_PATH = os.path.join(os.getcwd(), "download")

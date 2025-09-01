@@ -13,10 +13,18 @@ from oauth2client.service_account import ServiceAccountCredentials
 # CONFIG — edit these only
 # =========================
 # Odoo
-ODOO_URL   = "https://taps.odoo.com"
-DB         = "masbha-tex-taps-master-2093561"
-USERNAME   = "ranak@texzipperbd.com"
-PASSWORD   = "2326"
+from dotenv import load_dotenv   # <-- NEW
+
+# Load variables from .env
+load_dotenv()
+
+# =========================
+# CONFIG — now pulled from environment
+# =========================
+ODOO_URL   = os.getenv("ODOO_URL")
+DB         = os.getenv("ODOO_DB")
+USERNAME   = os.getenv("ODOO_USERNAME")
+PASSWORD   = os.getenv("ODOO_PASSWORD")
 
 MODEL      = "pending.stock.config"   # target model of the export preset
 EXPORT_ID  = 670                      # ir.exports preset id (e.g., 550, 351, etc.)
